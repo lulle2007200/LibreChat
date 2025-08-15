@@ -17,6 +17,7 @@ const {
   StructuredACS,
   TraversaalSearch,
   StructuredWolfram,
+  createComfyUiTools,
   createYouTubeTools,
   TavilySearchResults,
   createOpenAIImageTools,
@@ -155,6 +156,17 @@ const loadTools = async ({
     tavily_search_results_json: TavilySearchResults,
   };
 
+
+  /** @type {ImageGenOptions} */
+  const imageGenOptions = {
+    isAgent: !!agent,
+    req: options.req,
+    fileStrategy: options.fileStrategy,
+    processFileURL: options.processFileURL,
+    returnMetadata: options.returnMetadata,
+    uploadImageBuffer: options.uploadImageBuffer,
+  };
+
   const customConstructors = {
     serpapi: async (_toolContextMap) => {
       const authFields = getAuthFields('serpapi');
@@ -168,6 +180,11 @@ const loadTools = async ({
         hl: 'en',
         gl: 'us',
       });
+    },
+    comfyui: async(_toolContextMap) => {
+      const authFields = getAuthFields('comfyui');
+      const authValues = await loadAuthValues({userId: user, authFields});
+      return createComfyUiTools({...authValues, ...imageGenOptions, userId: user});
     },
     youtube: async (_toolContextMap) => {
       const authFields = getAuthFields('youtube');
@@ -210,16 +227,6 @@ const loadTools = async ({
   if (functions === true) {
     toolConstructors.dalle = DALLE3;
   }
-
-  /** @type {ImageGenOptions} */
-  const imageGenOptions = {
-    isAgent: !!agent,
-    req: options.req,
-    fileStrategy: options.fileStrategy,
-    processFileURL: options.processFileURL,
-    returnMetadata: options.returnMetadata,
-    uploadImageBuffer: options.uploadImageBuffer,
-  };
 
   const toolOptions = {
     flux: imageGenOptions,
