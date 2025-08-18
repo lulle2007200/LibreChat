@@ -363,7 +363,7 @@ class ComfyUiAPI extends ComfyUiBase {
     super(fields);
 
     // this.name = "comfyui-img"
-    this.name = "stable-diffusion"
+    this.name = "comfyui-img"
 
     this.description = 'You can generate images using text with \'stable-diffusion-comfyui\'. This tool is exclusively for visual content.';
     this.schema = z.object({

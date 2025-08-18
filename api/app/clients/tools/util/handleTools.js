@@ -229,6 +229,7 @@ const loadTools = async ({
 
   const toolOptions = {
     flux: imageGenOptions,
+    'comfyui-img': imageGenOptions,
     dalle: imageGenOptions,
     'stable-diffusion': imageGenOptions,
     serpapi: { location: 'Austin,Texas,United States', hl: 'en', gl: 'us' },
