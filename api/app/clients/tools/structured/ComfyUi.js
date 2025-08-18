@@ -30,8 +30,6 @@ class ComfyUiBase extends Tool {
     }
 
     this.url            = fields.COMFYUI_URL      || this.getServerURL();
-
-    logger.info(this.url);
     
     // If specified, included as bearer in any request
     this.api_key        = fields.COMFYUI_API_KEY  || this.getAPIKey();
@@ -90,7 +88,7 @@ class ComfyUiBase extends Tool {
       cfgNodeId = this.getSamplerNodeId();
     }
 
-    if(!this.checkProperty(this.workflow?.[schedulerNodeId]?.inputs, "cfg")) {
+    if(!this.checkProperty(this.workflow?.[cfgNodeId]?.inputs, "cfg")) {
       logger.info("cfg node doesnt have cfg input");
       cfgNodeId = '';
     }
@@ -285,9 +283,6 @@ class ComfyUiInfo extends ComfyUiBase {
   constructor(fields) {
     super(fields);
 
-    logger.info("comfyUiAPI url ");
-    logger.info(this.url);
-
     this.name = "comfyui-info";
 
     this.description = 'You can use the \'comfyui_info\' tool to get additional information about comfyui, such as available models or samplers.'
@@ -471,7 +466,7 @@ class ComfyUiAPI extends ComfyUiBase {
     });
   }
 
-  async queuePrompt(workflow) {
+  async queuePrompt(workflow, callId) {
     const url = this.url;
 
     let headers = {}
@@ -481,7 +476,7 @@ class ComfyUiAPI extends ComfyUiBase {
 
     let response;
     try {
-      response = await axios.post(`${url}/prompt`, {client_id: this.userId, prompt: workflow}, {headers: headers});
+      response = await axios.post(`${url}/prompt`, {client_id: callId, prompt: workflow}, {headers: headers});
       return response.data.prompt_id;
     } catch (error) {
       logger.error("[ComfyUI] Error queueing new prompt.");
@@ -517,8 +512,11 @@ class ComfyUiAPI extends ComfyUiBase {
     return `${this.url}/view?${params.toString()}`;
   }
 
-  async getImages(workflow, ws) {
-    const promptId = await this.queuePrompt(workflow);
+  async getImages(workflow, ws, callId) {
+    const promptId = await this.queuePrompt(workflow, callId);
+
+    logger.info(`[ComfyUI] Submitted prompt ${promptId}.`);
+
 
     while(true) {
       const data = await new Promise((resolve, reject) => {
@@ -544,13 +542,15 @@ class ComfyUiAPI extends ComfyUiBase {
         continue;
       }
 
-      const msg = JSON.parse(data.data.toString());
+      const msgStr = data.data.toString();
+      const msg    = JSON.parse(msgStr);
 
       if(msg.data.prompt_id !== promptId) {
         continue;
       }
 
       if(msg.type === "execution_success") {
+        logger.info(`[ComfyUI] ${promptId} successfully generated.`);
         break;
       }
     }
@@ -607,8 +607,12 @@ class ComfyUiAPI extends ComfyUiBase {
       workflow[this.widthNodeId].inputs.height = data.height;
     }
 
-    if(data.seed && this.seedNodeId) {
-      workflow[this.seedNodeId].inputs[this.seedKey] = data.seed;
+    if(this.seedNodeId) {
+      if(data.seed) {
+        workflow[this.seedNodeId].inputs[this.seedKey] = data.seed;
+      }else {
+        workflow[this.seedNodeId].inputs[this.seedKey] = Math.floor(Math.random() * 0x100000000);
+      }
     }
 
     if(data.scheduler && this.schedulerNodeId) {
@@ -625,10 +629,10 @@ class ComfyUiAPI extends ComfyUiBase {
     }
 
     let ws;
+    const callId = crypto.randomUUID();
     try {
-      ws = new WebSocket(`${ws_url}/ws?clientId=${this.userId}`, {headers: headers});
+      ws = new WebSocket(`${ws_url}/ws?clientId=${callId}`, {headers: headers});
 
-      logger.info(`${this.userId}`);
 
       await new Promise((resolve, reject) => {
         if(ws.readyState === WebSocket.OPEN) {
@@ -655,7 +659,7 @@ class ComfyUiAPI extends ComfyUiBase {
 
     let outputImages;
     try{
-      outputImages = await this.getImages(workflow, ws);
+      outputImages = await this.getImages(workflow, ws, callId);
       ws.close();
     } catch (error) {
       logger.error("[ComfyUI] Error while opening WebSocket:", error);
@@ -663,15 +667,14 @@ class ComfyUiAPI extends ComfyUiBase {
       return 'Error making API request.'
     }
 
-    const { imageOutput: imageOutputPath, clientPath } = paths;
-    if (!fs.existsSync(path.join(imageOutputPath, this.userId))) {
-      fs.mkdirSync(path.join(imageOutputPath, this.userId), {recursive : true});
-    }
+    // const { imageOutput: imageOutputPath, clientPath } = paths;
+    // if (!fs.existsSync(path.join(imageOutputPath, this.userId))) {
+    //   fs.mkdirSync(path.join(imageOutputPath, this.userId), {recursive : true});
+    // }
 
     try {
       let content = [];
       for(const outputImage of outputImages) {
-        logger.info(outputImage);
         const response = await axios.get(outputImage, {headers: headers, responseType: "arraybuffer"});
         const b64Image = Buffer.from(response.data, 'binary').toString('base64');
 
@@ -693,7 +696,6 @@ class ComfyUiAPI extends ComfyUiBase {
       ];
 
       const ret = [response, { content }];
-      logger.info(JSON.stringify(ret));
       return [response, { content }];
     } catch (error) {
       logger.error("[ComfyUI] Error getting generated images:", error);
