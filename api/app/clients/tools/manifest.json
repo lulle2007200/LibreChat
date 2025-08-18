@@ -13,6 +13,39 @@
     ]
   },
   {
+    "name": "ComfyUI",
+    "pluginKey": "comfyui",
+    "description": "Generate photo-realistic images given any text input.",
+    "icon": "https://i.imgur.com/vOfN6ba.png",
+    "toolkit": true,
+    "authConfig": [
+      {
+        "authField": "COMFYUI_URL",
+        "label": "ComfyUI API URL",
+        "description": "You need to provide the URL of your ComfyUI API."
+      },
+      {
+        "authField": "COMFYUI_API_KEY",
+        "label": "ComfyUI API key",
+        "description": "If required, provide your API Key for ComfyUI",
+        "isOptional": true
+      },
+      {
+        "authField": "COMFYUI_WORKFLOW",
+        "label": "ComfyUI workflow",
+        "description": "The ComfyUI workflow to use",
+        "isMultiline": true
+      },
+      {
+        "authField": "COMFYUI_NODE_MAP",
+        "label": "ComfyUI node map",
+        "description": "The Image model to use",
+        "isMultiline": true,
+        "isOptional": true
+      }
+    ]
+  },
+  {
     "name": "Google",
     "pluginKey": "google",
     "description": "Use Google Search to find information about the weather, news, sports, and more.",

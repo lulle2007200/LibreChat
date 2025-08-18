@@ -29,6 +29,7 @@ const {
 const {
   createOpenAIImageTools,
   createYouTubeTools,
+  createComfyUiTools,
   manifestToolMap,
   toolkits,
 } = require('~/app/clients/tools');
@@ -117,6 +118,7 @@ function loadAndFormatTools({ directory, adminFilter = [], adminIncluded = [] })
     new Calculator(),
     ...createOpenAIImageTools({ override: true }),
     ...createYouTubeTools({ override: true }),
+    ...createComfyUiTools({ override: true}),
   ];
   for (const toolInstance of basicToolInstances) {
     const formattedTool = formatToOpenAIAssistantTool(toolInstance);

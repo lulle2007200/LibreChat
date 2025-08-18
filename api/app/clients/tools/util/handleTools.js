@@ -20,6 +20,7 @@ const {
   createYouTubeTools,
   TavilySearchResults,
   createOpenAIImageTools,
+  createComfyUiTools,
 } = require('../');
 const { primeFiles: primeCodeFiles } = require('~/server/services/Files/Code/process');
 const { createFileSearchTool, primeFiles: primeSearchFiles } = require('./fileSearch');
@@ -134,7 +135,7 @@ const getAuthFields = (toolKey) => {
  * @returns {Promise<{ loadedTools: Tool[], toolContextMap: Object<string, any> } | Record<string,Tool>>}
  */
 const loadTools = async ({
-  user,
+  user, 
   agent,
   model,
   endpoint,
@@ -155,7 +156,22 @@ const loadTools = async ({
     tavily_search_results_json: TavilySearchResults,
   };
 
+  /** @type {ImageGenOptions} */
+  const imageGenOptions = {
+    isAgent: !!agent,
+    req: options.req,
+    fileStrategy: options.fileStrategy,
+    processFileURL: options.processFileURL,
+    returnMetadata: options.returnMetadata,
+    uploadImageBuffer: options.uploadImageBuffer,
+  };
+
   const customConstructors = {
+    comfyui: async(_toolContextMap) => {
+      const authFields = getAuthFields('comfyui');
+      const authValues = await loadAuthValues({userId: user, authFields});
+      return createComfyUiTools({...authValues, userId: user, ...imageGenOptions});
+    },
     serpapi: async (_toolContextMap) => {
       const authFields = getAuthFields('serpapi');
       let envVar = authFields[0] ?? '';
@@ -210,16 +226,6 @@ const loadTools = async ({
   if (functions === true) {
     toolConstructors.dalle = DALLE3;
   }
-
-  /** @type {ImageGenOptions} */
-  const imageGenOptions = {
-    isAgent: !!agent,
-    req: options.req,
-    fileStrategy: options.fileStrategy,
-    processFileURL: options.processFileURL,
-    returnMetadata: options.returnMetadata,
-    uploadImageBuffer: options.uploadImageBuffer,
-  };
 
   const toolOptions = {
     flux: imageGenOptions,
